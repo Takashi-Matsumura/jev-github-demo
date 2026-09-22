@@ -7,7 +7,6 @@ const DB_PATH = join(process.cwd(), ".data", "prs.db");
 const SCHEMA_PATH = join(process.cwd(), "lib", "schema.sql");
 
 declare global {
-  // eslint-disable-next-line no-var
   var __prsDb: DatabaseSync | undefined;
 }
 
