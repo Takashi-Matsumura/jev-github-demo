@@ -25,6 +25,29 @@ const MIGRATIONS: string[] = [
   ALTER TABLE pull_requests ADD COLUMN ai_source TEXT NOT NULL DEFAULT 'unmeasured';
   ALTER TABLE pull_requests ADD COLUMN commits_truncated INTEGER NOT NULL DEFAULT 0;
   `,
+  // v2: 成長への助言（手元の言語モデルによる生成物）を保持するテーブルを追加。
+  // dev/pr/repo の3スコープを1テーブルに収める。生成にコストがかかるため生成物は
+  // 必ず保存し、再生成は signals_version/prompt_version の不一致か force 指定でのみ行う。
+  `
+  CREATE TABLE IF NOT EXISTS growth_advice (
+    repo_id         INTEGER NOT NULL REFERENCES repos(id) ON DELETE CASCADE,
+    scope           TEXT    NOT NULL,           -- 'dev' | 'pr' | 'repo'
+    subject         TEXT    NOT NULL,           -- dev: login / pr: 番号の文字列 / repo: ''
+    signals_json    TEXT    NOT NULL,           -- 決定論的に確定した観測事実。LLM を通していない
+    signals_version TEXT    NOT NULL,
+    prompt_version  TEXT    NOT NULL,
+    exchange_json   TEXT,                       -- 送ったもの・返ってきたものそのまま。NULL なら呼ぶ前に落ちた
+    advice_json     TEXT,                       -- スキーマ検証を通した構造化出力
+    model           TEXT,
+    input_tokens    INTEGER,
+    output_tokens   INTEGER,
+    elapsed_ms      INTEGER,
+    needs_review    INTEGER NOT NULL DEFAULT 0, -- カタログ外 id など、検証で落ちたものがあった
+    error           TEXT,
+    generated_at    TEXT    NOT NULL,
+    PRIMARY KEY (repo_id, scope, subject)
+  );
+  `,
 ];
 
 function migrate(db: DatabaseSync): void {
