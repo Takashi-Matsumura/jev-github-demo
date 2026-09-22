@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRepo, listPullRequests } from "@/lib/queries";
+import { getRepo, listPullRequests, getAdvice } from "@/lib/queries";
 import { scoreRepo } from "@/lib/score";
 import { formatNumber, formatInt } from "@/lib/format";
 import { CategoryBadge, SourceBadge } from "@/components/category-badge";
@@ -24,6 +24,12 @@ import { buildDeveloperSignals } from "@/lib/growth";
 import { SignalTable, TrendTable } from "@/components/signal-table";
 import { StrataCompare } from "@/components/strata-compare";
 import { DomainCoverageView } from "@/components/domain-coverage";
+import type { DeveloperAdvice } from "@/lib/advice";
+import { findLearningTheme } from "@/lib/learning-catalog";
+import { AdviceDisclaimer } from "@/components/advice-disclaimer";
+import { AdviceButton } from "@/components/advice-button";
+import { GemmaConsole, type GemmaExchangeLike } from "@/components/gemma-console";
+import { LocalModelNotice } from "@/components/local-model-notice";
 
 export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner]/[repo]/devs/[login]">) {
   const { owner, repo, login } = await props.params;
@@ -46,6 +52,10 @@ export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner
   const aiWeekly = weeklyAiRate(repoRow.id, login);
   const aiByPr = new Map(listPullRequests(repoRow.id).map((p) => [p.number, p]));
   const growth = buildDeveloperSignals(repoRow.id, login);
+
+  const adviceRow = getAdvice(repoRow.id, "dev", login);
+  const advice = adviceRow?.advice_json ? (JSON.parse(adviceRow.advice_json) as DeveloperAdvice) : null;
+  const exchange = adviceRow?.exchange_json ? (JSON.parse(adviceRow.exchange_json) as GemmaExchangeLike) : null;
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 px-4 py-8">
@@ -154,6 +164,84 @@ export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner
           <div className="text-sm font-medium">AI併走の有無で見た違い</div>
           <StrataCompare strata={growth.strata} />
         </div>
+
+        <AdviceDisclaimer />
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">助言</div>
+          {advice ? (
+            <div className="space-y-3 rounded-lg border border-border p-3 text-sm">
+              <p>{advice.summary}</p>
+              {advice.strengths.length > 0 ? (
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted">良さそうなところ</div>
+                  <ul className="space-y-1">
+                    {advice.strengths.map((s, i) => (
+                      <li key={i}>
+                        <code className="mr-1 text-xs text-muted">[{s.signal}]</code>
+                        {s.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {advice.watchpoints.length > 0 ? (
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted">気にしておきたいところ</div>
+                  <ul className="space-y-1">
+                    {advice.watchpoints.map((s, i) => (
+                      <li key={i}>
+                        <code className="mr-1 text-xs text-muted">[{s.signal}]</code>
+                        {s.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              {advice.questions_for_1on1.length > 0 ? (
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted">1on1 で聞くとよいこと</div>
+                  <ul className="list-inside list-disc space-y-0.5">
+                    {advice.questions_for_1on1.map((q, i) => (
+                      <li key={i}>{q}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">まだ生成していません。下のボタンから生成できます。</p>
+          )}
+        </div>
+
+        {advice && advice.themes.length > 0 ? (
+          <div className="space-y-1">
+            <div className="text-sm font-medium">おすすめの学習テーマ</div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {advice.themes.map((t) => {
+                const theme = findLearningTheme(t.id);
+                if (!theme) return null;
+                return (
+                  <div key={t.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="font-medium">{theme.title}</div>
+                    <p className="mt-1 text-xs text-muted">{t.reason}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {theme.refs.map((r) => (
+                        <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="text-cat-feat underline">
+                          {r.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <AdviceButton owner={owner} repo={repo} scope="dev" subject={login} />
+        <GemmaConsole exchange={exchange} />
+        <LocalModelNotice />
       </section>
 
       <section className="space-y-3">
