@@ -1,6 +1,7 @@
 import { fetchPullRequests, githubTransport, GithubError, type ProgressEvent } from "@/lib/github";
 import { upsertRepo, upsertPullRequest, touchIngest } from "@/lib/queries";
 import { getDb } from "@/lib/db";
+import { rejectCrossOrigin } from "@/lib/same-origin";
 
 const NAME_RE = /^[A-Za-z0-9._-]{1,100}$/;
 
@@ -10,7 +11,15 @@ type IngestBody = {
   limit?: number;
 };
 
+function parseLimit(raw: unknown, fallback: number): number {
+  const num = typeof raw === "number" && Number.isFinite(raw) ? raw : fallback;
+  return Math.min(Math.max(Math.trunc(num), 1), 500);
+}
+
 export async function POST(request: Request) {
+  const originRejection = rejectCrossOrigin(request);
+  if (originRejection) return originRejection;
+
   let body: IngestBody;
   try {
     body = (await request.json()) as IngestBody;
@@ -20,7 +29,7 @@ export async function POST(request: Request) {
 
   const owner = body.owner?.trim() ?? "";
   const repo = body.repo?.trim() ?? "";
-  const limit = Math.min(Math.max(Math.trunc(body.limit ?? 20), 1), 500);
+  const limit = parseLimit(body.limit, 20);
 
   if (!NAME_RE.test(owner) || !NAME_RE.test(repo)) {
     return Response.json({ error: "owner / repo の形式が不正です" }, { status: 400 });
