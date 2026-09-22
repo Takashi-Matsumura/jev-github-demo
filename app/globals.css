@@ -3,11 +3,48 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #f4f4f5;
+  --border: #e4e4e7;
+  --muted: #71717a;
+
+  --cat-feat: #2563eb;
+  --cat-fix: #dc2626;
+  --cat-perf: #0891b2;
+  --cat-refactor: #7c3aed;
+  --cat-test: #16a34a;
+  --cat-ci: #ca8a04;
+  --cat-docs: #64748b;
+  --cat-chore: #a1a1aa;
+  --cat-revert: #b91c1c;
+  --cat-other: #78716c;
+
+  --warn-bg: #fffbeb;
+  --warn-border: #fcd34d;
+  --warn-fg: #92400e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --color-cat-feat: var(--cat-feat);
+  --color-cat-fix: var(--cat-fix);
+  --color-cat-perf: var(--cat-perf);
+  --color-cat-refactor: var(--cat-refactor);
+  --color-cat-test: var(--cat-test);
+  --color-cat-ci: var(--cat-ci);
+  --color-cat-docs: var(--cat-docs);
+  --color-cat-chore: var(--cat-chore);
+  --color-cat-revert: var(--cat-revert);
+  --color-cat-other: var(--cat-other);
+
+  --color-warn-bg: var(--warn-bg);
+  --color-warn-border: var(--warn-border);
+  --color-warn-fg: var(--warn-fg);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -16,11 +53,18 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #18181b;
+    --border: #27272a;
+    --muted: #a1a1aa;
+
+    --warn-bg: #1c1917;
+    --warn-border: #92400e;
+    --warn-fg: #fbbf24;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
