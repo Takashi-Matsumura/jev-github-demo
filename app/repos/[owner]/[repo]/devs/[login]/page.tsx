@@ -20,6 +20,10 @@ import { StackedBar } from "@/components/chart/stacked-bar";
 import { StatTile } from "@/components/chart/stat-tile";
 import { Meter } from "@/components/chart/meter";
 import { ColumnChart } from "@/components/chart/column-chart";
+import { buildDeveloperSignals } from "@/lib/growth";
+import { SignalTable, TrendTable } from "@/components/signal-table";
+import { StrataCompare } from "@/components/strata-compare";
+import { DomainCoverageView } from "@/components/domain-coverage";
 
 export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner]/[repo]/devs/[login]">) {
   const { owner, repo, login } = await props.params;
@@ -41,6 +45,7 @@ export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner
   const aiStats = aiCoauthorStats(repoRow.id, login);
   const aiWeekly = weeklyAiRate(repoRow.id, login);
   const aiByPr = new Map(listPullRequests(repoRow.id).map((p) => [p.number, p]));
+  const growth = buildDeveloperSignals(repoRow.id, login);
 
   return (
     <main className="mx-auto w-full max-w-4xl flex-1 space-y-6 px-4 py-8">
@@ -115,6 +120,41 @@ export default async function DeveloperDrilldown(props: PageProps<"/repos/[owner
           <ColumnChart data={aiWeekly} formatValue={(n) => `${n}%`} height={80} emptyLabel="マージ済み PR がありません" />
         </section>
       ) : null}
+
+      <section className="space-y-4 rounded-lg border border-border p-4">
+        <div>
+          <h2 className="font-medium">成長の見立て（観測事実）</h2>
+          <p className="mt-1 text-xs text-muted">
+            ここに出ている数値はすべて Pull Request のデータから決定論的に計算したもので、AI（Jev・その他）は
+            一切通していません。判定不能の指標は値を出さず、理由だけを示します。
+          </p>
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">技術領域の広がり</div>
+          <DomainCoverageView domains={growth.domains} />
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">推移（前半 → 直近）</div>
+          <TrendTable trends={growth.trends} />
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">品質（テスト・説明力）</div>
+          <SignalTable signals={growth.quality} />
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">他人のコードを読む量（レビュー活動）</div>
+          <SignalTable signals={growth.review} />
+        </div>
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">AI併走の有無で見た違い</div>
+          <StrataCompare strata={growth.strata} />
+        </div>
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-medium">リードタイム / サイズ</h2>

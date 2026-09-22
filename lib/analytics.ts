@@ -103,7 +103,8 @@ const LEAD_TIME_BUCKETS: { label: string; maxHours: number }[] = [
   { label: "7d〜", maxHours: Infinity },
 ];
 
-function leadTimeHours(pr: PullRequestRow): number | null {
+/** lib/growth.ts の AI 層別比較（リードタイム）が同じ計算を必要とするため export する。 */
+export function leadTimeHours(pr: PullRequestRow): number | null {
   if (!pr.merged_at) return null;
   return (new Date(pr.merged_at).getTime() - new Date(pr.created_at).getTime()) / 3_600_000;
 }
