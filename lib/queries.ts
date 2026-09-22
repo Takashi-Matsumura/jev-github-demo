@@ -219,6 +219,12 @@ export function getRepo(owner: string, name: string): RepoRow | undefined {
     .get({ owner, name }) as unknown as RepoRow | undefined;
 }
 
+/** lib/growth.ts が repoId だけを受け取って owner/name 表記の文字列を組み立てるために使う。 */
+export function getRepoById(id: number): RepoRow | undefined {
+  const db = getDb();
+  return db.prepare("SELECT * FROM repos WHERE id = :id").get({ id }) as unknown as RepoRow | undefined;
+}
+
 // ─── 分類向けの読み書き ──────────────────────────────────────────
 
 export type PullRequestRow = {

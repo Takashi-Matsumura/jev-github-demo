@@ -57,8 +57,9 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   smallSampleThreshold: 5,
 };
 
-/** confidence が低いほど中立(0.5)へ引き戻す。conf=1 で素通し、conf=0 で完全中立。 */
-function shrink(x01: number, conf: number): number {
+/** confidence が低いほど中立(0.5)へ引き戻す。conf=1 で素通し、conf=0 で完全中立。
+ *  lib/growth.ts の trends/strata も同じ式を使う（export してここを唯一の定義にする）。 */
+export function shrink(x01: number, conf: number): number {
   const c = Math.min(Math.max(conf, 0), 1);
   return 0.5 + (x01 - 0.5) * c;
 }
