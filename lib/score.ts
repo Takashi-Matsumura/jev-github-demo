@@ -109,7 +109,7 @@ export type DeveloperScore = {
   reviews: ReviewContribution[];
 };
 
-function effLoc(repoId: number, pr: PullRequestRow, w: ScoreWeights): number {
+export function effLoc(repoId: number, pr: PullRequestRow, w: ScoreWeights): number {
   const files = listPrFiles(repoId, pr.number).filter((f) => !f.generated);
   if (files.length === 0) {
     // ファイル一覧が無い場合は PR 全体の additions/deletions で代替する

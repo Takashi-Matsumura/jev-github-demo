@@ -11,12 +11,24 @@
   --cat-fix: #dc2626;
   --cat-perf: #0891b2;
   --cat-refactor: #7c3aed;
-  --cat-test: #16a34a;
-  --cat-ci: #ca8a04;
+  --cat-test: #15803d;
+  --cat-ci: #b45309;
   --cat-docs: #64748b;
   --cat-chore: #a1a1aa;
   --cat-revert: #b91c1c;
   --cat-other: #78716c;
+
+  /* AI co-author の強調色。dataviz skill の validate_palette.js で light/dark とも
+     ALL CHECKS PASS を確認済み（surface #f4f4f5 / #18181b に対しコントラスト >= 3:1）。
+     ヒートマップの sequential 表現はこの1色相をアルファ合成で階調化して使う。 */
+  --ai: #6d28d9;
+
+  /* レビュー状態の status パレット。categorical の色とは独立に確保し、
+     古典的な赤緑ペア（CVD deutan で ΔE 4.2 = FAIL）を避けてteal/orangeに変更。
+     light/dark 両モードで ALL CHECKS PASS の同一値（validate_palette.js で確認）。 */
+  --review-approved: #0b8e7e;
+  --review-changes: #cb4b10;
+  --review-commented: var(--muted);
 
   --warn-bg: #fffbeb;
   --warn-border: #fcd34d;
@@ -41,6 +53,12 @@
   --color-cat-revert: var(--cat-revert);
   --color-cat-other: var(--cat-other);
 
+  --color-ai: var(--ai);
+
+  --color-review-approved: var(--review-approved);
+  --color-review-changes: var(--review-changes);
+  --color-review-commented: var(--review-commented);
+
   --color-warn-bg: var(--warn-bg);
   --color-warn-border: var(--warn-border);
   --color-warn-fg: var(--warn-fg);
@@ -56,6 +74,24 @@
     --surface: #18181b;
     --border: #27272a;
     --muted: #a1a1aa;
+
+    /* light 版のカテゴリ色は OKLCH L がダークサーフェス（#18181b）に対する
+       lightness band [0.48, 0.67] から外れるため、同じ hue で L を振り直した
+       専用セット。validate_palette.js で個別に検証済み（chore の chroma floor
+       と ci/test の CVD 6-8 帯 WARN は light 版と同じ理由で許容 — 低ウェイト
+       カテゴリの意図的な後退、直接ラベル併用前提）。 */
+    --cat-feat: #2372f1;
+    --cat-fix: #dc2d12;
+    --cat-perf: #0489a0;
+    --cat-refactor: #8958dc;
+    --cat-test: #1a9152;
+    --cat-ci: #b95e0a;
+    --cat-docs: #6f8bdb;
+    --cat-chore: #526963;
+    --cat-revert: #980ab5;
+    --cat-other: #b47c2d;
+
+    --ai: #8b5cf6;
 
     --warn-bg: #1c1917;
     --warn-border: #92400e;

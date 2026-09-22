@@ -4,6 +4,20 @@ import { getRepo, listClassifications } from "@/lib/queries";
 import { scoreRepo, DEFAULT_WEIGHTS } from "@/lib/score";
 import { formatNumber, formatInt } from "@/lib/format";
 import { CategoryBadge } from "@/components/category-badge";
+import {
+  weeklyActivity,
+  leadTimeHistogram,
+  sizeHistogram,
+  reviewStateBreakdown,
+  reviewMatrix,
+  aiCoauthorStats,
+  weeklyAiRate,
+} from "@/lib/analytics";
+import { ColumnChart } from "@/components/chart/column-chart";
+import { Histogram } from "@/components/chart/histogram";
+import { StackedBar } from "@/components/chart/stacked-bar";
+import { Heatmap } from "@/components/chart/heatmap";
+import { Meter } from "@/components/chart/meter";
 
 export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[repo]">) {
   const { owner, repo } = await props.params;
@@ -41,6 +55,15 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
     .sort((a, b) => (b.risk ?? 0) - (a.risk ?? 0))
     .slice(0, 5);
 
+  const activity = weeklyActivity(repoRow.id);
+  const leadTimeBins = leadTimeHistogram(repoRow.id);
+  const sizeBins = sizeHistogram(repoRow.id);
+  const reviews = reviewStateBreakdown(repoRow.id);
+  const matrix = reviewMatrix(repoRow.id);
+  const aiStats = aiCoauthorStats(repoRow.id);
+  const aiWeekly = weeklyAiRate(repoRow.id);
+  const aiRatesByDev = new Map(sorted.map((d) => [d.login, aiCoauthorStats(repoRow.id, d.login)]));
+
   const sortLink = (key: string, label: string) => (
     <Link href={`/repos/${owner}/${repo}?sort=${key}`} className={sort === key ? "font-semibold underline" : "text-muted"}>
       {label}
@@ -76,6 +99,23 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
           <div className="font-mono">
             {formatInt(inputTokens)}in / {formatInt(outputTokens)}out · 平均 {formatInt(Math.round(avgElapsed))}ms
           </div>
+        </div>
+        <div className="rounded-lg border border-border p-3 text-sm">
+          <div className="text-muted">AI併走コミット率</div>
+          <Meter ratio={aiStats.commitRate} />
+          <div className="mt-1 font-mono text-xs text-muted">
+            {formatInt(aiStats.aiCommits)}/{formatInt(aiStats.totalCommits)} コミット
+          </div>
+          <div className="mt-1 text-xs text-muted">
+            trailer {formatInt(aiStats.sourceCounts.trailer)} · body {formatInt(aiStats.sourceCounts.body)} · 未計測{" "}
+            {formatInt(aiStats.sourceCounts.unmeasured)}
+          </div>
+          {aiStats.agents.length > 0 ? (
+            <div className="mt-1 text-xs text-muted">検出: {aiStats.agents.join(", ")}</div>
+          ) : null}
+          <p className="mt-1 text-xs text-muted">
+            Co-authored-by: は申告であり計測ではありません。0% は「AI を使っていない」証明にはなりません。スコアには影響しません。
+          </p>
         </div>
         <details className="rounded-lg border border-border p-3 text-sm">
           <summary className="cursor-pointer text-muted">配点 {weightsVersion} ▾</summary>
@@ -122,11 +162,13 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
                   <th className="px-3 py-2">レビュー</th>
                   <th className="px-3 py-2">PR数</th>
                   <th className="px-3 py-2">+/-</th>
+                  <th className="px-3 py-2">AI併走</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
                 {sorted.map((d) => {
                   const lowPct = Math.round(d.lowConfidenceShare * 100);
+                  const ai = aiRatesByDev.get(d.login);
                   return (
                     <tr key={d.login}>
                       <td className="px-3 py-2">
@@ -161,6 +203,15 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
                         <span className="text-cat-test">+{formatInt(d.additions)}</span>{" "}
                         <span className="text-cat-fix">-{formatInt(d.deletions)}</span>
                       </td>
+                      <td className="px-3 py-2">
+                        {ai && ai.measured ? (
+                          <div className="w-20">
+                            <Meter ratio={ai.commitRate} />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted">未計測</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -189,6 +240,54 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
           ))}
         </div>
       </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">週次の活動推移（マージ PR 数）</h2>
+        <ColumnChart data={activity.prCount} legend={activity.legend} formatValue={formatInt} emptyLabel="マージ済み PR がありません" />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">週次の活動推移（スコア合計）</h2>
+        <ColumnChart data={activity.score} legend={activity.legend} formatValue={(n) => formatNumber(n, 0)} emptyLabel="マージ済み PR がありません" />
+      </section>
+
+      <section className="space-y-2">
+        <h2 className="font-medium">週次の AI併走 PR 比率</h2>
+        <ColumnChart data={aiWeekly} formatValue={(n) => `${n}%`} height={100} emptyLabel="マージ済み PR がありません" />
+      </section>
+
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <section className="space-y-2">
+          <h2 className="font-medium">リードタイム分布（作成 → マージ）</h2>
+          <Histogram bins={leadTimeBins} color="var(--cat-feat)" />
+        </section>
+        <section className="space-y-2">
+          <h2 className="font-medium">PR サイズ分布（実効LOC・生成物除く）</h2>
+          <Histogram bins={sizeBins} color="var(--cat-refactor)" />
+        </section>
+      </div>
+
+      <section className="space-y-2">
+        <div className="flex items-center justify-between">
+          <h2 className="font-medium">レビュー内訳</h2>
+          <span className="text-xs text-muted">自己レビュー・bot は除く / 計 {formatInt(reviews.total)} 件</span>
+        </div>
+        {reviews.total === 0 ? (
+          <p className="text-sm text-muted">
+            他者レビューの実績がありません。単独開発のリポジトリでは常にこうなります — 「レビュー貢献 0」は活動不足ではなく、
+            レビュー対象になる相手がいないことを意味します。
+          </p>
+        ) : (
+          <StackedBar segments={reviews.segments} legend={reviews.legend} />
+        )}
+      </section>
+
+      {matrix.rows.length > 0 && matrix.cols.length > 0 ? (
+        <section className="space-y-2">
+          <h2 className="font-medium">レビュー相互作用マトリクス（行=レビュアー、列=PR作成者）</h2>
+          <Heatmap rows={matrix.rows} cols={matrix.cols} value={matrix.value} />
+        </section>
+      ) : null}
 
       {riskyPrs.length > 0 ? (
         <section className="space-y-2">
