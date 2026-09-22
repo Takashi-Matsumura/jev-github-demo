@@ -75,6 +75,28 @@ export default async function PrDetail(props: PageProps<"/repos/[owner]/[repo]/p
               {formatInt(pr.commit_count)} コミット · レビュー {formatInt(pr.review_count)} 件
             </div>
             {pr.files_truncated ? <p className="mt-1 text-xs text-warn-fg">⚠ ファイル一覧が一部欠落しています</p> : null}
+            {pr.commits_truncated ? <p className="mt-1 text-xs text-warn-fg">⚠ コミット一覧が100件を超えるため一部欠落しています</p> : null}
+
+            <div className="mt-2 flex items-center gap-2 text-xs">
+              {pr.ai_commit_count > 0 || pr.ai_source === "body" ? (
+                <span
+                  className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-medium text-white"
+                  style={{ backgroundColor: "var(--ai)" }}
+                >
+                  AI併走 {formatInt(pr.ai_commit_count)}/{formatInt(pr.commit_count)} コミット
+                </span>
+              ) : (
+                <span className="rounded-full border border-border px-2 py-0.5 text-muted">
+                  AI併走 {pr.ai_source === "unmeasured" ? "未計測" : "検出なし"}
+                </span>
+              )}
+              <span className="text-muted">
+                根拠: {pr.ai_source === "trailer" ? "コミット co-author" : pr.ai_source === "body" ? "PR本文の生成マーカー" : pr.ai_source === "unmeasured" ? "GITHUB_TOKEN未設定のため未計測" : "検出なし（GraphQL経由で計測済み）"}
+              </span>
+            </div>
+            {(JSON.parse(pr.ai_agents) as string[]).length > 0 ? (
+              <div className="mt-1 text-xs text-muted">検出エージェント: {(JSON.parse(pr.ai_agents) as string[]).join(", ")}</div>
+            ) : null}
 
             <details className="mt-3">
               <summary className="cursor-pointer text-xs text-muted">変更ファイル（{files.length}）</summary>

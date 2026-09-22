@@ -47,6 +47,12 @@ export type FetchedPr = {
   changedFiles: number;
   commitCount: number;
   commitTitles: string[];
+  commitsTruncated: boolean;
+  /** Co-authored-by: トレーラ（GraphQL の Commit.authors）または PR body の生成マーカーで検出した AI co-author の数。 */
+  aiCommitCount: number;
+  aiAgents: string[];
+  /** trailer: コミット co-author で検出 / body: PR本文の生成マーカーで検出 / none: GraphQL経路で計測したが0件 / unmeasured: REST経路でコミット情報が取れない。 */
+  aiSource: "trailer" | "body" | "none" | "unmeasured";
   reviewCount: number;
   commentCount: number;
   labels: string[];
@@ -86,12 +92,16 @@ export function upsertPullRequest(repoId: number, pr: FetchedPr): void {
     `INSERT INTO pull_requests (
        repo_id, number, title, body, author_login, author_is_bot, state,
        created_at, merged_at, additions, deletions, changed_files,
-       commit_count, commit_titles, review_count, comment_count,
+       commit_count, commit_titles, commits_truncated,
+       ai_commit_count, ai_agents, ai_source,
+       review_count, comment_count,
        labels_json, url, files_truncated, fetched_at
      ) VALUES (
        :repo_id, :number, :title, :body, :author_login, :author_is_bot, :state,
        :created_at, :merged_at, :additions, :deletions, :changed_files,
-       :commit_count, :commit_titles, :review_count, :comment_count,
+       :commit_count, :commit_titles, :commits_truncated,
+       :ai_commit_count, :ai_agents, :ai_source,
+       :review_count, :comment_count,
        :labels_json, :url, :files_truncated, :fetched_at
      )
      ON CONFLICT (repo_id, number) DO UPDATE SET
@@ -100,7 +110,10 @@ export function upsertPullRequest(repoId: number, pr: FetchedPr): void {
        state = excluded.state, merged_at = excluded.merged_at,
        additions = excluded.additions, deletions = excluded.deletions,
        changed_files = excluded.changed_files, commit_count = excluded.commit_count,
-       commit_titles = excluded.commit_titles, review_count = excluded.review_count,
+       commit_titles = excluded.commit_titles, commits_truncated = excluded.commits_truncated,
+       ai_commit_count = excluded.ai_commit_count, ai_agents = excluded.ai_agents,
+       ai_source = excluded.ai_source,
+       review_count = excluded.review_count,
        comment_count = excluded.comment_count, labels_json = excluded.labels_json,
        url = excluded.url, files_truncated = excluded.files_truncated,
        fetched_at = excluded.fetched_at`,
@@ -119,6 +132,10 @@ export function upsertPullRequest(repoId: number, pr: FetchedPr): void {
     changed_files: pr.changedFiles,
     commit_count: pr.commitCount,
     commit_titles: JSON.stringify(pr.commitTitles),
+    commits_truncated: b(pr.commitsTruncated),
+    ai_commit_count: pr.aiCommitCount,
+    ai_agents: JSON.stringify(pr.aiAgents),
+    ai_source: pr.aiSource,
     review_count: pr.reviewCount,
     comment_count: pr.commentCount,
     labels_json: JSON.stringify(pr.labels),
@@ -219,6 +236,10 @@ export type PullRequestRow = {
   changed_files: number;
   commit_count: number;
   commit_titles: string;
+  commits_truncated: number;
+  ai_commit_count: number;
+  ai_agents: string;
+  ai_source: "trailer" | "body" | "none" | "unmeasured";
   review_count: number;
   comment_count: number;
   labels_json: string;
