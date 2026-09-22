@@ -1,4 +1,5 @@
-import { hasGithubToken, hasTypesafeApiKey, isJevDisabled } from "@/lib/env";
+import { hasGithubToken, hasTypesafeApiKey, isJevDisabled, getGemmaEndpoint, getGemmaModel, isGemmaDisabled } from "@/lib/env";
+import { gemmaReachable } from "@/lib/gemma";
 import { getDb, tableNames } from "@/lib/db";
 
 export async function GET() {
@@ -20,6 +21,12 @@ export async function GET() {
       jev: {
         hasApiKey: hasTypesafeApiKey(),
         disabled: isJevDisabled(),
+      },
+      gemma: {
+        endpoint: getGemmaEndpoint(),
+        model: getGemmaModel(),
+        disabled: isGemmaDisabled(),
+        reachable: await gemmaReachable(),
       },
       db: {
         tables,
