@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRepo, getPullRequest, listPrFiles, listPrReviews, getClassification } from "@/lib/queries";
+import { getRepo, getPullRequest, listPrFiles, listPrReviews, getClassification, getAdvice } from "@/lib/queries";
 import { formatDateTime, formatInt } from "@/lib/format";
 import { CategoryBadge, SourceBadge } from "@/components/category-badge";
 import { ProbabilityBar, ConfidenceMark } from "@/components/probability-bar";
 import { JevConsole, type JevExchangeLike } from "@/components/jev-console";
 import { scoreRepo } from "@/lib/score";
 import { ScoreFormula } from "@/components/score-formula";
+import type { PrCheck } from "@/lib/advice";
+import { AdviceButton } from "@/components/advice-button";
+import { GemmaConsole, type GemmaExchangeLike } from "@/components/gemma-console";
 
 export default async function PrDetail(props: PageProps<"/repos/[owner]/[repo]/prs/[number]">) {
   const { owner, repo, number: numberStr } = await props.params;
@@ -37,6 +40,10 @@ export default async function PrDetail(props: PageProps<"/repos/[owner]/[repo]/p
   const contrib = pr.author_login
     ? developers.find((d) => d.login === pr.author_login)?.prs.find((p) => p.number === number)
     : undefined;
+
+  const adviceRow = getAdvice(repoRow.id, "pr", String(number));
+  const prCheck = adviceRow?.advice_json ? (JSON.parse(adviceRow.advice_json) as PrCheck) : null;
+  const adviceExchange = adviceRow?.exchange_json ? (JSON.parse(adviceRow.exchange_json) as GemmaExchangeLike) : null;
 
   return (
     <main className="mx-auto w-full max-w-5xl flex-1 space-y-6 px-4 py-8">
@@ -185,6 +192,30 @@ export default async function PrDetail(props: PageProps<"/repos/[owner]/[repo]/p
           <ScoreFormula factors={contrib.factors} score={contrib.score} />
         </section>
       ) : null}
+
+      <section className="space-y-2 rounded-lg border border-border p-4">
+        <h2 className="font-medium">理解度セルフチェック</h2>
+        {prCheck && prCheck.questions.length > 0 ? (
+          <>
+            <ol className="list-inside list-decimal space-y-1 text-sm">
+              {prCheck.questions.map((q, i) => (
+                <li key={i}>
+                  <span className="mr-1 rounded-full border border-border px-1.5 py-0.5 text-xs text-muted">{q.focus}</span>
+                  {q.text}
+                </li>
+              ))}
+            </ol>
+            <p className="text-xs text-muted">
+              採点はしません。答え合わせもありません。答えられない項目があれば、そこが読み直しどころです。
+              この問いは変更の要約から生成されたもので、正解を持っていません。的外れな問いが混ざることがあります。
+            </p>
+          </>
+        ) : (
+          <p className="text-sm text-muted">まだ生成していません。下のボタンから生成できます。</p>
+        )}
+        <AdviceButton owner={owner} repo={repo} scope="pr" subject={String(number)} />
+        <GemmaConsole exchange={adviceExchange} />
+      </section>
 
       <section className="space-y-2">
         <h2 className="font-medium">Jev コンソール</h2>
