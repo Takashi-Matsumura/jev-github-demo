@@ -56,6 +56,13 @@ npm run dev
   `CREATE TABLE IF NOT EXISTS` の `lib/schema.sql` は v0 ベースラインとして凍結されており、
   それ以降のカラム追加は `lib/db.ts` の `MIGRATIONS`（`PRAGMA user_version` ベース）にのみ
   追記します。`lib/schema.sql` を直接書き換えても既存 DB には反映されません。
+  - v1: AI co-author 検出の列（`ai_commit_count` 等）を `pull_requests` に追加。
+  - v2: 「成長への助言」（`growth_advice` テーブル）を追加。開発者・PR・リポジトリの
+    3スコープを1テーブルに収め、`signals_json`（決定論的に確定した観測事実。LLM を
+    通していない）と `advice_json`（LLM の出力）を分けて保持します。
+  - **マイグレーションは Node プロセスの再起動が必要です。** `lib/db.ts` の `getDb()` は
+    `globalThis` にシングルトン保持するため、`next dev` を起動したままコードだけ更新しても
+    新しいマイグレーションは適用されません（HMR では再実行されない）。
 
 ## 開発
 

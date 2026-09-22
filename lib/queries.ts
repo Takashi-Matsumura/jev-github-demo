@@ -440,3 +440,92 @@ export function upsertClassification(repoId: number, number: number, c: Classifi
     classified_at: new Date().toISOString(),
   } satisfies Record<string, Bindable>);
 }
+
+// ─── 成長への助言の読み書き ────────────────────────────────────────
+
+export type AdviceScope = "dev" | "pr" | "repo";
+
+export type GrowthAdviceRow = {
+  repo_id: number;
+  scope: AdviceScope;
+  subject: string;
+  signals_json: string;
+  signals_version: string;
+  prompt_version: string;
+  exchange_json: string | null;
+  advice_json: string | null;
+  model: string | null;
+  input_tokens: number | null;
+  output_tokens: number | null;
+  elapsed_ms: number | null;
+  needs_review: number;
+  error: string | null;
+  generated_at: string;
+};
+
+export type AdviceInput = {
+  signalsJson: string;
+  signalsVersion: string;
+  promptVersion: string;
+  exchangeJson: string | null;
+  adviceJson: string | null;
+  model: string | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  elapsedMs: number | null;
+  needsReview: boolean;
+  error: string | null;
+};
+
+export function getAdvice(repoId: number, scope: AdviceScope, subject: string): GrowthAdviceRow | undefined {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM growth_advice WHERE repo_id = :repo_id AND scope = :scope AND subject = :subject")
+    .get({ repo_id: repoId, scope, subject }) as unknown as GrowthAdviceRow | undefined;
+}
+
+export function listAdvice(repoId: number): GrowthAdviceRow[] {
+  const db = getDb();
+  return db
+    .prepare("SELECT * FROM growth_advice WHERE repo_id = :repo_id")
+    .all({ repo_id: repoId }) as unknown as GrowthAdviceRow[];
+}
+
+export function upsertAdvice(repoId: number, scope: AdviceScope, subject: string, a: AdviceInput): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO growth_advice (
+       repo_id, scope, subject, signals_json, signals_version, prompt_version,
+       exchange_json, advice_json, model, input_tokens, output_tokens, elapsed_ms,
+       needs_review, error, generated_at
+     ) VALUES (
+       :repo_id, :scope, :subject, :signals_json, :signals_version, :prompt_version,
+       :exchange_json, :advice_json, :model, :input_tokens, :output_tokens, :elapsed_ms,
+       :needs_review, :error, :generated_at
+     )
+     ON CONFLICT (repo_id, scope, subject) DO UPDATE SET
+       signals_json = excluded.signals_json, signals_version = excluded.signals_version,
+       prompt_version = excluded.prompt_version,
+       exchange_json = excluded.exchange_json, advice_json = excluded.advice_json,
+       model = excluded.model, input_tokens = excluded.input_tokens,
+       output_tokens = excluded.output_tokens, elapsed_ms = excluded.elapsed_ms,
+       needs_review = excluded.needs_review, error = excluded.error,
+       generated_at = excluded.generated_at`,
+  ).run({
+    repo_id: repoId,
+    scope,
+    subject,
+    signals_json: a.signalsJson,
+    signals_version: a.signalsVersion,
+    prompt_version: a.promptVersion,
+    exchange_json: n(a.exchangeJson),
+    advice_json: n(a.adviceJson),
+    model: n(a.model),
+    input_tokens: a.inputTokens,
+    output_tokens: a.outputTokens,
+    elapsed_ms: a.elapsedMs,
+    needs_review: b(a.needsReview),
+    error: n(a.error),
+    generated_at: new Date().toISOString(),
+  } satisfies Record<string, Bindable>);
+}
