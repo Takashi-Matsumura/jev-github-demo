@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getRepo, listClassifications } from "@/lib/queries";
+import { getRepo, listClassifications, getAdvice } from "@/lib/queries";
 import { scoreRepo, DEFAULT_WEIGHTS } from "@/lib/score";
 import { formatNumber, formatInt } from "@/lib/format";
 import { CategoryBadge } from "@/components/category-badge";
@@ -22,6 +22,12 @@ import { buildRepoSignals } from "@/lib/growth";
 import { SignalTable, TrendTable } from "@/components/signal-table";
 import { StrataCompare } from "@/components/strata-compare";
 import { DomainCoverageView } from "@/components/domain-coverage";
+import type { RepoAdvice } from "@/lib/advice";
+import { findLearningTheme } from "@/lib/learning-catalog";
+import { AdviceDisclaimer } from "@/components/advice-disclaimer";
+import { AdviceButton } from "@/components/advice-button";
+import { GemmaConsole, type GemmaExchangeLike } from "@/components/gemma-console";
+import { LocalModelNotice } from "@/components/local-model-notice";
 
 export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[repo]">) {
   const { owner, repo } = await props.params;
@@ -68,6 +74,10 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
   const aiWeekly = weeklyAiRate(repoRow.id);
   const aiRatesByDev = new Map(sorted.map((d) => [d.login, aiCoauthorStats(repoRow.id, d.login)]));
   const growth = buildRepoSignals(repoRow.id);
+
+  const adviceRow = getAdvice(repoRow.id, "repo", "");
+  const repoAdvice = adviceRow?.advice_json ? (JSON.parse(adviceRow.advice_json) as RepoAdvice) : null;
+  const repoAdviceExchange = adviceRow?.exchange_json ? (JSON.parse(adviceRow.exchange_json) as GemmaExchangeLike) : null;
 
   const sortLink = (key: string, label: string) => (
     <Link href={`/repos/${owner}/${repo}?sort=${key}`} className={sort === key ? "font-semibold underline" : "text-muted"}>
@@ -345,6 +355,72 @@ export default async function RepoDashboard(props: PageProps<"/repos/[owner]/[re
           <div className="text-sm font-medium">AI併走の有無で見た違い</div>
           <StrataCompare strata={growth.strata} />
         </div>
+
+        <AdviceDisclaimer />
+
+        {repoAdvice && repoAdvice.undetermined.length > 0 ? (
+          <div className="space-y-1 rounded-lg border border-warn-border p-3 text-sm">
+            <div className="text-xs font-medium text-warn-fg">判定できなかったこと</div>
+            <ul className="list-inside list-disc space-y-0.5 text-warn-fg">
+              {repoAdvice.undetermined.map((u, i) => (
+                <li key={i}>{u}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
+        <div className="space-y-1">
+          <div className="text-sm font-medium">助言</div>
+          {repoAdvice ? (
+            <div className="space-y-3 rounded-lg border border-border p-3 text-sm">
+              <p>{repoAdvice.summary}</p>
+              {repoAdvice.team_patterns.length > 0 ? (
+                <div>
+                  <div className="mb-1 text-xs font-medium text-muted">チームの傾向</div>
+                  <ul className="space-y-1">
+                    {repoAdvice.team_patterns.map((s, i) => (
+                      <li key={i}>
+                        <code className="mr-1 text-xs text-muted">[{s.signal}]</code>
+                        {s.text}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <p className="text-sm text-muted">まだ生成していません。下のボタンから生成できます。</p>
+          )}
+        </div>
+
+        {repoAdvice && repoAdvice.themes.length > 0 ? (
+          <div className="space-y-1">
+            <div className="text-sm font-medium">おすすめの学習テーマ</div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {repoAdvice.themes.map((t) => {
+                const theme = findLearningTheme(t.id);
+                if (!theme) return null;
+                return (
+                  <div key={t.id} className="rounded-lg border border-border p-3 text-sm">
+                    <div className="font-medium">{theme.title}</div>
+                    <p className="mt-1 text-xs text-muted">{t.reason}</p>
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {theme.refs.map((r) => (
+                        <a key={r.url} href={r.url} target="_blank" rel="noreferrer" className="text-cat-feat underline">
+                          {r.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        <AdviceButton owner={owner} repo={repo} scope="repo" subject="" />
+        <GemmaConsole exchange={repoAdviceExchange} />
+        <LocalModelNotice />
       </section>
     </main>
   );
