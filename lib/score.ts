@@ -79,6 +79,8 @@ export type PrContribution = {
   factors: ScoreFactor[];
   lowConfidence: boolean;
   jevFailed: boolean;
+  /** classifications にまだ行が無い（分類が一度も実行されていない）PR。 */
+  classified: boolean;
 };
 
 export type ReviewContribution = {
@@ -183,6 +185,7 @@ function scorePr(
     factors,
     lowConfidence,
     jevFailed,
+    classified: !!c,
   };
 }
 
@@ -261,7 +264,10 @@ export function scoreRepo(repoId: number, w: ScoreWeights = DEFAULT_WEIGHTS): Re
     const lowConfScore = prContribs.filter((p) => p.lowConfidence).reduce((s, p) => s + p.score, 0);
 
     const categoryMix: Partial<Record<Category, number>> = {};
-    for (const p of prContribs) categoryMix[p.category] = (categoryMix[p.category] ?? 0) + 1;
+    for (const p of prContribs) {
+      if (!p.classified) continue;
+      categoryMix[p.category] = (categoryMix[p.category] ?? 0) + 1;
+    }
 
     developers.push({
       login,
