@@ -64,7 +64,8 @@ export function JevConsole({ exchange }: { exchange: JevExchangeLike | null }) {
               ) : (
                 <div className="space-y-1">
                   <div className="text-sm">
-                    スコア: <strong>{answer.score}</strong> — {answer.legend[String(answer.score)] ?? ""}
+                    スコア: <strong>{answer.score.toFixed(2)}</strong> —{" "}
+                    {answer.legend[String(Math.round(answer.score))] ?? ""}
                     <ConfidenceMark confidence={answer.confidence} />
                   </div>
                   {Object.entries(answer.probabilities)
