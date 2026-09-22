@@ -2,34 +2,9 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
+import { streamNdjson } from "@/components/ndjson-stream";
 
 type LogLine = { text: string; kind: "info" | "warn" | "error" | "done" };
-
-async function streamNdjson(url: string, body: unknown, onLine: (obj: Record<string, unknown>) => void): Promise<void> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok || !res.body) {
-    const text = await res.text().catch(() => "");
-    throw new Error(text || `HTTP ${res.status}`);
-  }
-  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
-  let buffer = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += value;
-    const lines = buffer.split("\n");
-    buffer = lines.pop() ?? "";
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      onLine(JSON.parse(line) as Record<string, unknown>);
-    }
-  }
-  if (buffer.trim()) onLine(JSON.parse(buffer) as Record<string, unknown>);
-}
 
 export function IngestForm({ defaultOwner, defaultRepo }: { defaultOwner: string; defaultRepo: string }) {
   const [owner, setOwner] = useState(defaultOwner);
